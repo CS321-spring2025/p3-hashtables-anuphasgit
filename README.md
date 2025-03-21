@@ -22,7 +22,7 @@ $ javac HashtableExperiment.java
 
 After compiling, run the program using the following format:
 
-java HashtableExperiment.java <dataSource> <loadFactor> <debugLevel>
+$ java HashtableExperiment.java <dataSource> <loadFactor> <debugLevel>
 
 where:
     <dataSource>: 1 ==> random numbers
