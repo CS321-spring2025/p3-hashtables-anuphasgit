@@ -1,100 +1,87 @@
-import java.io.*;
-import java.util.*;
-import java.text.SimpleDateFormat;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
 
-
+/**
+ * Driver program for hash table experiments.
+ * Compares linear probing and double hashing for various data sources and load factors.
+ * 
+ * @author Anup Bhattarai
+ */
 public class HashtableExperiment {
-    private static final double[] LOAD_FACTORS = {0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99};
-    private static final String[] DATA_SOURCE_NAMES = {"Random Numbers", "Date Values", "Word List"};
-    
-    private static int tableSize;
+    private static final String WORD_LIST_FILE = "word-list.txt";
     private static int dataSource;
     private static double loadFactor;
     private static int debugLevel;
     
     /**
-     * Main method to run the hash table experiment.
-     * 
-     * @param args Command line arguments:
-     *        args[0]: Data source (1=random, 2=date, 3=word list)
-     *        args[1]: Load factor (ratio of objects to table size)
-     *        args[2]: Debug level (0=summary, 1=save to file, 2=debug output)
-     */
+     * Main method to run the hash table experiments.
+    */
     public static void main(String[] args) {
-        if (!parseCommandLineArgs(args)) {
-            printUsage();
-            return;
-        }
-        
-        // Generate twin prime for table size
-        tableSize = TwinPrimeGenerator.generateTwinPrime(95500, 96000);
-        System.out.println("Table size (twin prime): " + tableSize);
-        
-        // Calculate number of elements needed to reach desired load factor
-        int numElementsNeeded = (int) Math.ceil(loadFactor * tableSize);
-        System.out.println("Target load factor: " + loadFactor);
-        System.out.println("Number of elements needed: " + numElementsNeeded);
-        System.out.println("Data source: " + DATA_SOURCE_NAMES[dataSource - 1]);
-        System.out.println("Debug level: " + debugLevel);
-        System.out.println();
-        
-        // Create hash tables
-        LinearProbing linearProbingTable = new LinearProbing(tableSize, debugLevel);
-        DoubleHashing doubleHashingTable = new DoubleHashing(tableSize, debugLevel);
-        
-        // Perform experiment
-        performExperiment(linearProbingTable, doubleHashingTable, numElementsNeeded);
-        
-        // Print results
-        printResults(linearProbingTable, doubleHashingTable);
-        
-        // Save hash tables to files if debug level is 1 or higher
-        if (debugLevel >= 1) {
-            linearProbingTable.dumpToFile("linear-dump.txt");
-            doubleHashingTable.dumpToFile("double-dump.txt");
-            System.out.println("Hash tables saved to files linear-dump.txt and double-dump.txt");
-        }
-    }
-    
-    /**
-     * Parse and validate command line arguments.
-     * 
-     * @param args Command line arguments
-     * @return true if arguments are valid, false otherwise
-     */
-    private static boolean parseCommandLineArgs(String[] args) {
         if (args.length < 2 || args.length > 3) {
-            return false;
+            printUsage();
+            System.exit(1);
         }
+
+        debugLevel = 0;
         
         try {
             dataSource = Integer.parseInt(args[0]);
-            if (dataSource < 1 || dataSource > 3) {
-                System.err.println("Error: Data source must be 1, 2, or 3");
-                return false;
-            }
-            
             loadFactor = Double.parseDouble(args[1]);
-            if (loadFactor <= 0.0 || loadFactor >= 1.0) {
-                System.err.println("Error: Load factor must be between 0 and 1");
-                return false;
+            
+            if (args.length == 3) {
+                debugLevel = Integer.parseInt(args[2]);
             }
             
-            debugLevel = (args.length == 3) ? Integer.parseInt(args[2]) : 0;
+            if (dataSource < 1 || dataSource > 3) {
+                System.err.println("Error: dataSource must be 1, 2, or 3");
+                printUsage();
+                System.exit(1);
+            }
+            
+            if (loadFactor <= 0 || loadFactor >= 1) {
+                System.err.println("Error: loadFactor must be between 0 and 1");
+                printUsage();
+                System.exit(1);
+            }
+            
             if (debugLevel < 0 || debugLevel > 2) {
-                System.err.println("Error: Debug level must be 0, 1, or 2");
-                return false;
+                System.err.println("Error: debugLevel must be 0, 1, or 2");
+                printUsage();
+                System.exit(1);
             }
-            
-            return true;
         } catch (NumberFormatException e) {
-            System.err.println("Error parsing arguments: " + e.getMessage());
-            return false;
+            System.err.println("Error parsing command-line arguments: " + e.getMessage());
+            printUsage();
+            System.exit(1);
         }
+        
+        int tableSize = TwinPrimeGenerator.generateTwinPrime(95500, 96000);
+        System.out.println("HashtableExperiment: Found a twin prime table capacity: " + tableSize);
+        
+        int numElements = (int) Math.ceil(loadFactor * tableSize);
+        
+        String inputDescription = getInputDescription(dataSource);
+        System.out.println("HashtableExperiment: Input: " + inputDescription + "   Loadfactor: " + String.format("%.2f", loadFactor));
+        System.out.println();
+        
+        List<Object> data = generateData(dataSource, numElements);
+        
+        System.out.println("\tUsing Linear Probing");
+        runExperiment(new LinearProbing(tableSize), data, numElements, debugLevel, "linear-dump.txt");
+        
+        System.out.println();
+        
+        System.out.println("\tUsing Double Hashing");
+        runExperiment(new DoubleHashing(tableSize), data, numElements, debugLevel, "double-dump.txt");
     }
     
     /**
-     * Print usage information.
+     * Print usage information for the program.
      */
     private static void printUsage() {
         System.out.println("Usage: java HashtableExperiment <dataSource> <loadFactor> [<debugLevel>]");
@@ -102,103 +89,59 @@ public class HashtableExperiment {
         System.out.println("              2 ==> date value as a long");
         System.out.println("              3 ==> word list");
         System.out.println(" <loadFactor>: The ratio of objects to table size, denoted by alpha = n/m");
-        System.out.println(" <debugLevel>: 0 ==> print summary of experiment");
-        System.out.println("              1 ==> save the two hash tables to a file at the end");
-        System.out.println("              2 ==> print debugging output for each insert");
+        System.out.println(" <debugLevel>: 0 ==> print summary of experiment (default)");
+        System.out.println("               1 ==> save the two hash tables to a file at the end");
+        System.out.println("               2 ==> print debugging output for each insert");
     }
     
     /**
-     * Perform the hash table experiment by inserting objects into both hash tables.
+     * Get a description of the input source.
      * 
-     * @param linearProbingTable The linear probing hash table
-     * @param doubleHashingTable The double hashing hash table
-     * @param numElementsNeeded The number of elements to insert
+     * @param dataSource the data source identifier
+     * @return description of the data source
      */
-
-    private static void performExperiment(LinearProbing linearProbingTable, 
-                                     DoubleHashing doubleHashingTable, 
-                                     int numElementsNeeded) {
-    List<Object> data = new ArrayList<>();
-    Random random = new Random(42);
-    
-    System.out.println("Inserting into Linear Probing table...");
-    while (linearProbingTable.getNumElements() < numElementsNeeded) {
-        // Generate more data as needed
-        if (data.size() < 10000) { // Keep a buffer of data
-            List<Object> moreData = generateData(100000);
-            data.addAll(moreData);
+    private static String getInputDescription(int dataSource) {
+        switch (dataSource) {
+            case 1: return "Random-Numbers";
+            case 2: return "Date-Time";
+            case 3: return "Word-List";
+            default: return "Unknown";
         }
-        
-        // Insert data
-        Object keyObj = data.remove(0); // Take from the front
-        HashObject obj = new HashObject(keyObj);
-        linearProbingTable.insert(obj);
     }
-    
-    // Reset data for double hashing
-    data = new ArrayList<>();
-    
-    System.out.println("Inserting into Double Hashing table...");
-    while (doubleHashingTable.getNumElements() < numElementsNeeded) {
-        // Generate more data as needed
-        if (data.size() < 10000) {
-            List<Object> moreData = generateData(100000);
-            data.addAll(moreData);
-        }
-        
-        // Insert data
-        Object keyObj = data.remove(0);
-        HashObject obj = new HashObject(keyObj);
-        doubleHashingTable.insert(obj);
-    }
-}
     
     /**
-     * Generate data based on the selected data source.
-     * 
-     * @param size The number of data items to generate
-     * @return A list of data items
+     * Generate data based on the specified source.
      */
-    private static List<Object> generateData(int size) {
-        List<Object> data = new ArrayList<>(size);
-        Random random = new Random(42); // Using a fixed seed for reproducibility
+    private static List<Object> generateData(int dataSource, int numElements) {
+        List<Object> data = new ArrayList<>();
         
         switch (dataSource) {
-            case 1: // Random integers
-                for (int i = 0; i < size; i++) {
-                    data.add(Integer.valueOf(random.nextInt(1000000)));
+            case 1:
+                Random rand = new Random();
+                for (int i = 0; i < numElements * 2; i++) {
+                    data.add(rand.nextInt());
                 }
                 break;
                 
-            case 2: // Date values
+            case 2:
                 long current = new Date().getTime();
-                for (int i = 0; i < size; i++) {
-                    Date date = new Date(current);
-                    data.add(date);
-                    current += 1000; // Increase by 1 second (1000 ms)
+                for (int i = 0; i < numElements * 2; i++) {
+                    data.add(new Date(current));
+                    current += 1000;
                 }
                 break;
                 
-            case 3: // Word list
-                try {
-                    List<String> wordList = readWordList("word-list.txt");
-                    if (wordList.isEmpty()) {
-                        throw new IOException("Word list is empty");
-                    }
-                    
-                    // If word list is smaller than size, use words cyclically
-                    int wordListSize = wordList.size();
-                    for (int i = 0; i < size; i++) {
-                        data.add(wordList.get(i % wordListSize));
+            case 3:
+                try (BufferedReader reader = new BufferedReader(new FileReader(WORD_LIST_FILE))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        data.add(line);
+                        if (data.size() >= numElements * 3) { 
+                        }
                     }
                 } catch (IOException e) {
-                    System.err.println("Error reading word list: " + e.getMessage());
-                    System.err.println("Falling back to random strings");
-                    
-                    // Fallback to random strings
-                    for (int i = 0; i < size; i++) {
-                        data.add(generateRandomString(random, 5 + random.nextInt(10)));
-                    }
+                    System.err.println("Error reading word list file: " + e.getMessage());
+                    System.exit(1);
                 }
                 break;
         }
@@ -207,93 +150,43 @@ public class HashtableExperiment {
     }
     
     /**
-     * Read a word list from a file.
-     * 
-     * @param filename The name of the file to read
-     * @return A list of words
-     * @throws IOException If an I/O error occurs
+     * Run the experiment with the specified hash table and data.
      */
-    private static List<String> readWordList(String filename) throws IOException {
-        List<String> wordList = new ArrayList<>();
+    private static void runExperiment(Hashtable hashTable, List<Object> data, int numElements, int debugLevel, String dumpFileName) {
+        int insertedCount = 0;
+        int totalElements = 0;
         
-        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (!line.trim().isEmpty()) {
-                    wordList.add(line.trim());
+        System.out.println("HashtableExperiment: size of hash table is " + numElements);
+        
+        for (Object obj : data) {
+            HashObject hashObj = new HashObject(obj);
+            boolean inserted = hashTable.insert(hashObj);
+            
+            if (debugLevel == 2) {
+                if (inserted) {
+                    System.out.println("Inserted " + obj + " at position " + 
+                            " with " + hashObj.getProbeCount() + " probes");
+                } else {
+                    System.out.println("Found duplicate of " + obj);
+                }
+            }
+            
+            totalElements++;
+            if (inserted) {
+                insertedCount++;
+                if (insertedCount >= numElements) {
+                    break;
                 }
             }
         }
         
-        return wordList;
-    }
-    
-    /**
-     * Generate a random string of the specified length.
-     * 
-     * @param random The random number generator
-     * @param length The length of the string
-     * @return A random string
-     */
-    private static String generateRandomString(Random random, int length) {
-        StringBuilder sb = new StringBuilder(length);
-        for (int i = 0; i < length; i++) {
-            char c = (char) ('a' + random.nextInt(26));
-            sb.append(c);
+        System.out.println("\tInserted " + totalElements + " elements, of which " + 
+                hashTable.getDuplicates() + " were duplicates");
+        System.out.println("\tAvg. no. of probes = " + String.format("%.2f", hashTable.getAverageProbes()) + " ");
+        
+        if (debugLevel >= 1) {
+            hashTable.dumpToFile(dumpFileName);
+            System.out.println("HashtableExperiment: Saved dump of hash table");
         }
-        return sb.toString();
-    }
-    
-    /**
-     * Insert data into a hash table until it reaches the target number of elements.
-     * 
-     * @param table The hash table to insert into
-     * @param data The data to insert
-     * @param targetElements The target number of elements
-     */
-    private static void insertData(Hashtable table, List<Object> data, int targetElements) {
-        int dataIndex = 0;
-        
-        while (table.getNumElements() < targetElements && dataIndex < data.size()) {
-            Object keyObj = data.get(dataIndex++);
-            HashObject obj = new HashObject(keyObj);
-            table.insert(obj);
-        }
-        
-        if (table.getNumElements() < targetElements) {
-            System.out.println("Warning: Could not reach target load factor. " +
-                              "Inserted " + table.getNumElements() + " out of " +
-                              targetElements + " elements.");
-        }
-    }
-    
-    /**
-     * Print the results of the experiment.
-     * 
-     * @param linearProbingTable The linear probing hash table
-     * @param doubleHashingTable The double hashing hash table
-     */
-    private static void printResults(LinearProbing linearProbingTable, DoubleHashing doubleHashingTable) {
-        System.out.println("HashtableExperiment: Found a twin prime table capacity: " + tableSize);
-        System.out.println("HashtableExperiment: Input: Word-List   Loadfactor: " + 
-                          String.format("%.2f", loadFactor));
-        
-        // Linear Probing results
-        System.out.println("        Using Linear Probing");
-        System.out.println("HashtableExperiment: size of hash table is " + linearProbingTable.getNumElements());
-        int totalInserts = linearProbingTable.getNumElements() + linearProbingTable.getDuplicates();
-        System.out.println("        Inserted " + totalInserts + " elements, of which " + 
-                          linearProbingTable.getDuplicates() + " were duplicates");
-        System.out.println("        Avg. no. of probes = " + 
-                          String.format("%.2f", linearProbingTable.getAverageProbes()));
-        
-        // Double Hashing results
-        System.out.println("        Using Double Hashing");
-        System.out.println("HashtableExperiment: size of hash table is " + doubleHashingTable.getNumElements());
-        totalInserts = doubleHashingTable.getNumElements() + doubleHashingTable.getDuplicates();
-        System.out.println("        Inserted " + totalInserts + " elements, of which " + 
-                          doubleHashingTable.getDuplicates() + " were duplicates");
-        System.out.println("        Avg. no. of probes = " + 
-                          String.format("%.2f", doubleHashingTable.getAverageProbes()));
     }
 }

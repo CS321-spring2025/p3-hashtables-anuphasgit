@@ -1,34 +1,31 @@
 /**
- * Double hashing implementation of the Hashtable.
- * Uses h(k, i) = (h1(k) + i * h2(k)) mod m where:
- * h1(k) is the primary hash function
- * h2(k) is the secondary hash function
+ * DoubleHashing class extends Hashtable and implements double hashing for collision resolution.
+ * 
+ * @author Anup Bhattarai
  */
 public class DoubleHashing extends Hashtable {
     
     /**
-     * Constructor for DoubleHashing.
-     * 
-     * @param tableSize The size of the hash table
-     * @param debugLevel The debug level (0, 1, or 2)
+     * Constructor to create a new DoubleHashing hash table with given size.
+     *
+     * @param tableSize the size of the hash table
      */
-    public DoubleHashing(int tableSize, int debugLevel) {
-        super(tableSize, debugLevel);
+    public DoubleHashing(int tableSize) {
+        super(tableSize);
     }
     
     /**
-     * Find the hash index using double hashing.
-     * h(k, i) = (h1(k) + i * h2(k)) mod m
-     * 
-     * @param key The key to hash
-     * @param i The probe number
-     * @return The hash index
+     * Implementation of getNextProbe for double hashing.
+     * Double hashing uses the formula h(k, i) = (h1(k) + i * h2(k)) mod m
+     * where h1(k) = k mod m and h2(k) = 1 + (k mod (m - 2))
+     *
      */
     @Override
-    protected int findHashIndex(Object key, int i) {
-        int h1 = key.hashCode() % tableSize;
-        // The secondary hash function is h2(k) = 1 + (k mod (m - 2))
-        int h2 = 1 + Math.abs(key.hashCode() % (tableSize - 2));
+    protected int getNextProbe(Object key, int i) {
+        int h1 = positiveMod(key.hashCode(), tableSize);
+        
+        int h2 = 1 + positiveMod(key.hashCode(), tableSize - 2);
+        
         return positiveMod(h1 + i * h2, tableSize);
     }
 }

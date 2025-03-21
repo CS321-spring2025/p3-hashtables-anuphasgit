@@ -1,64 +1,52 @@
 /**
- * This class is designed to find the twin prime numbers between a given range.
+ * TwinPrimeGenerator class generates twin primes for use in determining hash table capacity.
+ * 
+ * @author Anup Bhattarai
  */
 public class TwinPrimeGenerator {
+    
     /**
-     * Generate a twin prime number between min and max.
-     * Returns the larger of the twin prime pair.
-     * 
-     * @param min The minimum value to consider
-     * @param max The maximum value to consider
-     * @return The larger of a twin prime pair, or -1 if no twin prime is found
+     * Generates the smallest twin prime within the given range [min, max].
+     * Returns the larger of the two twin primes.
      */
     public static int generateTwinPrime(int min, int max) {
-        // Minimum value should be at least 3 because the smallest twin prime is (3,5)
-        if (min < 3) {
-            min = 3;
-        }
-        
-        // Twin prime number are always odd
-        if (min % 2 == 0) {
-            min++;
-        }
-        
-        // Start iterating from min and only check odd numbers
-        for (int i = min; i <= max - 2; i += 2) {
+        for (int i = min; i <= max - 2; i++) {
             if (isPrime(i) && isPrime(i + 2)) {
-                // Found a twin prime, return the larger number
                 return i + 2;
             }
         }
-        
-        return -1; // No twin prime found
+        System.err.println("No twin primes found in range [" + min + ", " + max + "]");
+        return max;
     }
     
     /**
-     * Helper method to check if a number is prime.
-     * 
-     * @param n The number to check
-     * @return true if n is prime, false otherwise
+     * Checks if a number is prime.
      */
     private static boolean isPrime(int n) {
         if (n <= 1) {
             return false;
         }
-        
         if (n <= 3) {
             return true;
         }
-        
         if (n % 2 == 0 || n % 3 == 0) {
             return false;
         }
         
-        int i = 5;
-        while (i * i <= n) {
+        for (int i = 5; i * i <= n; i += 6) {
             if (n % i == 0 || n % (i + 2) == 0) {
                 return false;
             }
-            i += 6;
         }
-        
         return true;
+    }
+    
+    public static void main(String[] args) {
+        int min = 95500;
+        int max = 96000;
+        int twinPrime = generateTwinPrime(min, max);
+        System.out.println("Found twin prime: " + twinPrime);
+        System.out.println("Is " + twinPrime + " prime? " + isPrime(twinPrime));
+        System.out.println("Is " + (twinPrime - 2) + " prime? " + isPrime(twinPrime - 2));
     }
 }

@@ -1,6 +1,7 @@
 /**
- * A class representing objects to be stored in a hash table.
- * Contains a key object, frequency count for duplicates, and probe count.
+ * HashObject class contains a generic key object, frequency count for duplicates, and probe count.
+ * 
+ * @author Anup Bhattarai
  */
 public class HashObject {
     private Object key;
@@ -8,9 +9,7 @@ public class HashObject {
     private int probeCount;
     
     /**
-     * Constructor for HashObject.
-     * 
-     * @param key The key object for this HashObject
+     * Constructor to create a new HashObject with the given key.
      */
     public HashObject(Object key) {
         this.key = key;
@@ -19,55 +18,68 @@ public class HashObject {
     }
     
     /**
-     * Get the key object.
-     * 
-     * @return The key object
+     * Get the key of this HashObject.
+     *
      */
     public Object getKey() {
         return key;
     }
     
     /**
-     * Get the frequency count.
-     * 
-     * @return The frequency count
-     */
-    public int getFrequency() {
-        return frequency;
-    }
-    
-    /**
-     * Increment the frequency count when a duplicate is found.
+     * Increment the frequency count when a duplicate is encountered.
      */
     public void incrementFrequency() {
         frequency++;
     }
     
     /**
-     * Get the probe count.
-     * 
-     * @return The probe count
-     */
-    public int getProbeCount() {
-        return probeCount;
-    }
-    
-    /**
-     * Set the probe count.
-     * 
-     * @param probeCount The probe count to set
+     * Set the probe count for this HashObject during insertion.
+     *
      */
     public void setProbeCount(int probeCount) {
         this.probeCount = probeCount;
     }
     
     /**
-     * Returns a string representation of this HashObject.
-     * 
-     * @return A string representation of this HashObject
+     * Get the probe count for this HashObject.
+     *
+     */
+    public int getProbeCount() {
+        return probeCount;
+    }
+    
+    /**
+     * Get the frequency count for this HashObject.
+     *
+     */
+    public int getFrequency() {
+        return frequency;
+    }
+    
+    /**
+     * Compare this HashObject with another object for equality.
+     * Two HashObjects are equal if their keys are equal.
+     *
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        
+        HashObject other = (HashObject) obj;
+        return key.equals(other.key);
+    }
+    
+    /**
+     * Return a string representation of this HashObject including key, frequency, and probe count.
+     *
      */
     @Override
     public String toString() {
-        return key + " " + frequency + " " + probeCount;
+        return key.toString() + " " + frequency + " " + probeCount;
     }
 }

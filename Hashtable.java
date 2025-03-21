@@ -1,49 +1,36 @@
-import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.io.FileNotFoundException;
 
 /**
- * An abstract class representing a hash table with open addressing.
- * Provides common functionality for hash tables.
+ * Abstract Hashtable class that provides common functionality for hash tables.
+ * Concrete subclasses must implement specific probing strategies.
+ * 
+ * @author Anup Bhattarai
  */
 public abstract class Hashtable {
     protected HashObject[] table;
     protected int tableSize;
-    protected int numElements;
+    protected int size;
     protected int totalProbes;
+    protected int totalInsertions;
     protected int duplicates;
-    protected int debugLevel;
     
     /**
-     * Constructor for the Hashtable.
-     * 
-     * @param tableSize The size of the hash table
-     * @param debugLevel The debug level (0, 1, or 2)
+     * Constructor to create a new Hashtable with given size.
+     *
      */
-    public Hashtable(int tableSize, int debugLevel) {
+    public Hashtable(int tableSize) {
         this.tableSize = tableSize;
-        this.table = new HashObject[tableSize];
-        this.numElements = 0;
-        this.totalProbes = 0;
-        this.duplicates = 0;
-        this.debugLevel = debugLevel;
+        table = new HashObject[tableSize];
+        size = 0;
+        totalProbes = 0;
+        totalInsertions = 0;
+        duplicates = 0;
     }
     
     /**
-     * Abstract method for finding the hash index for a key.
-     * To be implemented by subclasses for different probing strategies.
-     * 
-     * @param key The key to find the index for
-     * @param i The probe number
-     * @return The hash index
-     */
-    protected abstract int findHashIndex(Object key, int i);
-    
-    /**
-     * Method to convert negative modulus to positive.
-     * 
-     * @param dividend The dividend
-     * @param divisor The divisor
-     * @return The positive modulus
+     * Helper method to ensure mod operations always return positive values.
+     *
      */
     protected int positiveMod(int dividend, int divisor) {
         int quotient = dividend % divisor;
@@ -54,13 +41,18 @@ public abstract class Hashtable {
     }
     
     /**
+     * Abstract method to get the next probe position.
+     * Must be implemented by subclasses according to their probing strategy.
+     *
+     */
+    protected abstract int getNextProbe(Object key, int i);
+    
+    /**
      * Insert a HashObject into the hash table.
-     * 
-     * @param obj The HashObject to insert
-     * @return true if inserted as a new object, false if a duplicate was found
+     * If a duplicate is found, increment its frequency instead of inserting.
      */
     public boolean insert(HashObject obj) {
-        if (numElements >= tableSize) {
+        if (size >= tableSize) {
             System.err.println("Error: Hash table is full");
             return false;
         }
@@ -70,143 +62,98 @@ public abstract class Hashtable {
         
         for (int i = 0; i < tableSize; i++) {
             probeCount++;
-            int index = findHashIndex(key, i);
+            int pos = getNextProbe(key, i);
             
-            if (table[index] == null) {
-                // Found an empty slot, insert the object
+            if (table[pos] == null) {
                 obj.setProbeCount(probeCount);
-                table[index] = obj;
-                numElements++;
+                table[pos] = obj;
+                size++;
                 totalProbes += probeCount;
-                
-                if (debugLevel >= 2) {
-                    System.out.println("Inserted " + key + " at index " + index + 
-                                       " with " + probeCount + " probes");
-                }
-                
+                totalInsertions++;
                 return true;
-            } else if (table[index].getKey().equals(key)) {
-                // Found a duplicate, increment frequency
-                table[index].incrementFrequency();
+            }
+            
+            if (table[pos].getKey().equals(key)) {
+                table[pos].incrementFrequency();
                 duplicates++;
-                
-                if (debugLevel >= 2) {
-                    System.out.println("Found duplicate for " + key + 
-                                       " at index " + index + ", frequency now " + 
-                                       table[index].getFrequency());
-                }
-                
                 return false;
             }
-            // Slot is occupied by a different object, continue probing
         }
         
-        // This should never happen if the table isn't full
-        System.err.println("Error: Could not insert " + key + 
-                           " after " + tableSize + " probes");
+        System.err.println("Error: Could not insert, hash table may be full");
         return false;
     }
     
     /**
      * Search for a key in the hash table.
-     * 
-     * @param key The key to search for
-     * @return The HashObject if found, null otherwise
      */
     public HashObject search(Object key) {
-        int probeCount = 0;
-        
         for (int i = 0; i < tableSize; i++) {
-            probeCount++;
-            int index = findHashIndex(key, i);
+            int pos = getNextProbe(key, i);
             
-            if (table[index] == null) {
-                // Found an empty slot, key is not in the table
+            if (table[pos] == null) {
                 return null;
-            } else if (table[index].getKey().equals(key)) {
-                // Found the key
-                return table[index];
             }
-            // Slot is occupied by a different object, continue probing
+            
+            if (table[pos].getKey().equals(key)) {
+                return table[pos];
+            }
         }
         
-        // Key not found after probing the entire table
         return null;
     }
     
     /**
-     * Get the number of elements in the hash table.
-     * 
-     * @return The number of elements
-     */
-    public int getNumElements() {
-        return numElements;
-    }
-    
-    /**
-     * Get the load factor of the hash table.
-     * 
-     * @return The load factor (numElements/tableSize)
-     */
-    public double getLoadFactor() {
-        return (double) numElements / tableSize;
-    }
-    
-    /**
-     * Get the average number of probes per successful insertion.
-     * 
-     * @return The average number of probes
+     * Get the average number of probes for successful insertions.
+     *
      */
     public double getAverageProbes() {
-        if (numElements == 0) {
+        if (totalInsertions == 0) {
             return 0.0;
         }
-        return (double) totalProbes / numElements;
+        return (double) totalProbes / totalInsertions;
     }
     
     /**
-     * Get the number of duplicates found.
-     * 
-     * @return The number of duplicates
+     * Get the number of elements in the hash table.
+     *
+     */
+    public int getSize() {
+        return size;
+    }
+    
+    /**
+     * Get the number of duplicates encountered.
+     *
      */
     public int getDuplicates() {
         return duplicates;
     }
     
     /**
-     * Dump the hash table to a file in the required format.
-     * Only non-null entries are included in the output.
-     * 
-     * @param fileName The name of the file to dump to
+     * Get the total number of successful insertions.
+     *
      */
-    public void dumpToFile(String fileName) {
-        try (PrintWriter out = new PrintWriter(fileName)) {
-            for (int i = 0; i < tableSize; i++) {
-                if (table[i] != null) {
-                    HashObject obj = table[i];
-                    out.println("table[" + i + "]: " + obj.getKey() + " " + 
-                                obj.getFrequency() + " " + obj.getProbeCount());
-                }
-            }
-        } catch (FileNotFoundException e) {
-            System.err.println("Error dumping hash table to file: " + e.getMessage());
-        }
+    public int getTotalInsertions() {
+        return totalInsertions;
     }
     
     /**
-     * Get a string representation of the hash table.
-     * 
-     * @return A string representation of the hash table
+     * Dump the contents of the hash table to a file.
+     * Only non-null entries are written.
      */
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Hash Table Type: ").append(this.getClass().getSimpleName()).append("\n");
-        sb.append("Table Size: ").append(tableSize).append("\n");
-        sb.append("Number of Elements: ").append(numElements).append("\n");
-        sb.append("Load Factor: ").append(getLoadFactor()).append("\n");
-        sb.append("Average Probes: ").append(getAverageProbes()).append("\n");
-        sb.append("Duplicates: ").append(duplicates).append("\n");
-        return sb.toString();
+    public void dumpToFile(String fileName) {
+        try {
+            PrintWriter out = new PrintWriter(fileName);
+            for (int i = 0; i < tableSize; i++) {
+                if (table[i] != null) {
+                    out.println("table[" + i + "]: " + table[i]);
+                }
+            }
+            out.close();
+        } catch (FileNotFoundException e) {
+            System.err.println("Error: Could not write to file " + fileName);
+            e.printStackTrace();
+        }
     }
 }
