@@ -74,9 +74,9 @@ where:
 | 0.9         | Linear       | 1.10                     |
 | 0.9         | Double       | 1.09                     |
 
-Screenshot of HashtableExperiment class running in the cloud is provided below:
+## Screenshot of HashtableExperiment Running in the Cloud
 
-![](AWS Screenshot.png)
+![Screenshot of HashtableExperiment](AWS%20Screenshot.png)
 
 ## Sources used
 
